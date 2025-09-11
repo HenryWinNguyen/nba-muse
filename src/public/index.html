@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NBA Muse</title>
+  <style>
+    :root{
+      color-scheme: dark;
+
+      /* primary = player's team, secondary = opponent (subtle) */
+      --accent: #6d28d9;           /* LAL default purple */
+      --accent-strong: #fbbf24;    /* LAL gold */
+      --accent-weak: rgba(109,40,217,.18);
+      --accent-weak-2: rgba(109,40,217,.10);
+
+      --opp-accent: #007A33;       /* BOS green (muted use) */
+      --opp-weak: rgba(0,122,51,.14);
+
+      --bg: #080b10;
+      --panel: #0e1117;
+      --panel-border: #1b2030;
+      --text: #e8eaf1;
+      --muted: #97a1b7;
+      --chip-border: #2a2f42;
+      --table-border: #1d2230;
+      --ok: #16a34a;
+    }
+
+    /* --- Background: single vignette with very soft grid --- */
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(900px 700px at 25% -10%, color-mix(in oklab, var(--accent-strong) 13%, transparent), transparent 60%),
+        radial-gradient(900px 700px at 120% 20%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 60%),
+        linear-gradient(#0a0d13, #090c12);
+      min-height:100svh;
+    }
+
+    .wrap{
+      max-width:1120px;
+      padding:28px 20px 80px;
+      margin:0 auto;
+    }
+
+    h1{
+      margin:0 0 18px;
+      font-size:28px;
+      letter-spacing:.2px;
+      font-weight:800;
+      color: #e7ecff;
+      text-shadow: 0 1px 0 rgba(0,0,0,.3);
+    }
+
+    /* --- Search Bar --- */
+    .bar{display:flex; gap:10px; align-items:center}
+    .search{
+      flex:1;
+      background: #0d1017;
+      border:1px solid color-mix(in oklab, var(--accent) 40%, var(--chip-border));
+      outline:none;
+      color:var(--text);
+      border-radius:14px;
+      padding:14px 16px;
+      font-size:16px;
+      transition: box-shadow .15s ease, border-color .15s ease;
+    }
+    .search:focus{
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-weak);
+    }
+    .btn{
+      position:relative;
+      border:0;
+      border-radius:14px;
+      padding:12px 16px;
+      background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+      color:#0b0b10;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow: 0 0 0 0 transparent;
+      transition: transform .04s ease;
+    }
+    .btn:active{ transform: translateY(1px); }
+    .btn::after{
+      content:"";
+      position:absolute; inset:-10px;
+      border-radius:18px;
+      background: radial-gradient(150px 60px at 50% 50%, color-mix(in oklab, var(--accent-strong) 40%, transparent), transparent 60%);
+      filter: blur(10px);
+      z-index:-1;
+      pointer-events:none;
+    }
+
+    /* suggestion dropdown */
+    .dropdown{
+      position:absolute; top:46px; left:0; right:98px;
+      background:var(--panel);
+      border:1px solid var(--chip-border);
+      border-radius:12px;
+      overflow:hidden; display:none; z-index:5;
+      box-shadow: 0 14px 30px rgba(0,0,0,.35);
+    }
+    .drop-sec{ padding:8px 12px; font-size:12px; color:var(--muted); opacity:.8 }
+    .item{ padding:10px 12px; cursor:pointer; border-top:1px solid rgba(255,255,255,.04)}
+    .item:hover{ background: rgba(255,255,255,.03)}
+
+    .badges{display:flex; gap:8px; margin:10px 0 8px; flex-wrap:wrap}
+    .badge{
+      font-size:12px; padding:6px 12px; border-radius:999px;
+      border:1px solid var(--chip-border);
+      background: var(--accent-weak-2);
+      color:#bfcae6;
+    }
+
+    .hint{color:var(--muted); margin:6px 0 14px}
+    .pill{
+      display:inline-block; padding:6px 12px; border-radius:999px;
+      border:1px solid var(--chip-border); color:#bfcae6; margin-right:8px; cursor:pointer;
+      background:#0f1117;
+    }
+    .pill[data-n].active{ background: var(--accent-weak); border-color:var(--accent); color:var(--text)}
+
+    /* --- Panels stacked --- */
+    .panel{
+      background: var(--panel);
+      border:1px solid var(--panel-border);
+      border-radius:18px;
+      padding:16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.28),
+                  inset 0 0 0 1px rgba(255,255,255,.02);
+      margin-bottom:18px;
+    }
+    .head{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:6px 6px 12px; border-bottom:1px dashed color-mix(in oklab, var(--accent) 35%, transparent);
+    }
+    .hleft{display:flex; gap:10px; align-items:center}
+    .dot{width:10px; height:10px; border-radius:999px; background: #22c55e; box-shadow:0 0 0 4px rgba(34,197,94,.12)}
+    .chip{
+      height:28px; min-width:28px; padding:0 10px;
+      display:inline-flex; align-items:center; justify-content:center;
+      font-size:12px; font-weight:900; letter-spacing:.03em;
+      border-radius:999px; color:#0b0b10; background: var(--accent-strong);
+      border:1px solid color-mix(in oklab, var(--accent-strong) 60%, #000);
+      box-shadow: 0 6px 16px rgba(250,204,21,.25);
+    }
+    .chip.mono{ width:28px; padding:0 }
+
+    .ghostbtn{
+      position:relative;
+      background:#121522; color:#e6e7f1;
+      border:1px solid #2b3350; border-radius:14px;
+      padding:10px 14px; font-weight:700; cursor:pointer;
+    }
+    .ghostbtn::after{
+      content:""; position:absolute; inset:-10px;
+      border-radius:18px;
+      background: radial-gradient(120px 50px at 50% 50%, color-mix(in oklab, var(--accent) 30%, transparent), transparent 70%);
+      filter: blur(12px); z-index:-1; pointer-events:none;
+    }
+    .ghostbtn.ok{ background:#16a34a; border-color:transparent; color:#06180b }
+
+    /* Highlight block for single-stat */
+    .metric{
+      margin:14px 4px 8px;
+      padding:18px;
+      border-radius:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+      border: 1px solid color-mix(in oklab, var(--accent) 28%, #10131b);
+      box-shadow: inset 0 0 60px rgba(0,0,0,.25);
+    }
+    .metric .value{
+      font-size:42px; font-weight:900; letter-spacing:.02em;
+      background: linear-gradient(90deg, var(--accent-strong), var(--accent));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      text-shadow: 0 1px 0 rgba(0,0,0,.25);
+      margin-right:12px;
+    }
+    .metric .label{ font-weight:800; color:#c9d2ff }
+
+    /* Monospace summary, line-per-section (no wrapping mid-line) */
+    pre{
+      margin:0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre;              /* keep each line intact */
+      overflow:auto;
+    }
+
+    /* Table */
+    table{ width:100%; border-collapse: collapse; }
+    thead tr{ border-bottom:2px solid color-mix(in oklab, var(--accent) 30%, var(--table-border)); }
+    th, td{ padding:10px 10px; border-bottom:1px solid var(--table-border); text-align:left; font-size:14px }
+    th{ color:#b7c4f0; font-weight:800; letter-spacing:.02em }
+    tbody tr:hover{ background: rgba(255,255,255,.02) }
+
+    /* Opponent chip inside table header */
+    .oppchip{
+      margin-left:10px;
+      height:22px; min-width:22px; padding:0 8px;
+      border-radius:999px; font-size:11px; font-weight:900;
+      background: var(--opp-weak); color:#dbe7ff; border:1px solid color-mix(in oklab, var(--opp-accent) 50%, #000);
+    }
+
+    /* spacing between panels when stacked */
+    .stack{ display:flex; flex-direction:column; gap:16px }
+
+    /* Dropdown anchor */
+    .anchor{ position:relative; }
+
+    /* Responsive tweaks (summary larger) */
+    @media (min-width: 900px){
+      .metric .value{ font-size:48px }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>NBA Muse</h1>
+
+    <div class="bar anchor">
+      <input id="q" class="search" type="text" placeholder='Try: "Kobe Bryant vs BOS", "LeBron career playoffs 3P%"' autocomplete="off" />
+      <button id="go" class="btn" type="button">Ask</button>
+      <div id="drop" class="dropdown"></div>
+    </div>
+
+    <div class="badges">
+      <span class="badge">2010–2024 offline dataset</span>
+      <span class="badge">free / local</span>
+    </div>
+
+    <div class="hint">Try:
+      <span class="pill">LeBron James career playoffs 3P%</span>
+      <span class="pill">Giannis vs BOS between 2019 and 2021 regular</span>
+      <span class="pill">Steph vs WAS last twenty four games</span>
+    </div>
+
+    <!-- STACKED LAYOUT -->
+    <div class="stack">
+
+      <!-- Summary card -->
+      <div class="panel" id="summaryPanel">
+        <div class="head">
+          <div class="hleft">
+            <span class="dot"></span>
+            <strong>Summary</strong>
+            <span id="teamChip" class="chip" style="display:none"></span>
+          </div>
+          <button id="copy" class="ghostbtn">Copy</button>
+        </div>
+
+        <!-- single-stat spotlight (hidden unless we have a stat focus) -->
+        <div id="metric" class="metric" style="display:none">
+          <span class="value" id="metricValue">00.0</span>
+          <span class="label" id="metricLabel">PPG</span>
+        </div>
+
+        <pre id="out">Result will appear here…</pre>
+      </div>
+
+      <!-- Games table -->
+      <div class="panel">
+        <div class="head">
+          <div class="hleft">
+            <span class="dot"></span>
+            <strong>Last games</strong>
+            <span id="oppChip" class="oppchip" style="display:none;"></span>
+          </div>
+          <div>
+            <span class="pill" data-n="10">Last 10</span>
+            <span class="pill" data-n="20">Last 20</span>
+            <span class="pill" data-n="50">Last 50</span>
+          </div>
+        </div>
+
+        <table id="games" aria-label="game table">
+          <thead><tr>
+            <th>Date</th><th>Opp</th><th>MIN</th><th>PTS</th><th>REB</th><th>AST</th>
+            <th>STL</th><th>BLK</th><th>TOV</th><th>FG%</th><th>3P%</th><th>FT%</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const input = $('#q'), btn = $('#go'), out = $('#out'), copyBtn = $('#copy');
+    const drop = $('#drop'), gamesBody = $('#games tbody');
+    const metric = $('#metric'), metricValue = $('#metricValue'), metricLabel = $('#metricLabel');
+    const teamChip = $('#teamChip'), oppChip = $('#oppChip');
+
+    /* ------------- TEAM COLOR MAP (primary is dominant) ------------- */
+    const TEAM = {
+      ATL:{p:'#E03A3E', s:'#C1D32F'},  BOS:{p:'#007A33', s:'#BA9653'},
+      BKN:{p:'#000000', s:'#FFFFFF'},  NJN:{p:'#002A5C', s:'#C8102E'},
+      CHA:{p:'#1D1160', s:'#00788C'},  CHH:{p:'#1D1160', s:'#41B6E6'},
+      CHI:{p:'#CE1141', s:'#000000'},  CLE:{p:'#6F263D', s:'#FFB81C'},
+      DAL:{p:'#00538C', s:'#B8C4CA'},  DEN:{p:'#0E2240', s:'#FEC524'},
+      DET:{p:'#C8102E', s:'#006BB6'},  GSW:{p:'#1D428A', s:'#FFC72C'},
+      HOU:{p:'#CE1141', s:'#C4CED4'},  IND:{p:'#002D62', s:'#FDBB30'},
+      LAC:{p:'#C8102E', s:'#1D428A'},  LAL:{p:'#552583', s:'#FDB927'},
+      MEM:{p:'#5D76A9', s:'#12173F'},  MIA:{p:'#98002E', s:'#F9A01B'},
+      MIL:{p:'#00471B', s:'#EEE1C6'},  MIN:{p:'#0C2340', s:'#236192'},
+      NOP:{p:'#0C2340', s:'#85714D'},  NOH:{p:'#002B5C', s:'#B4975A'}, NOK:{p:'#002B5C', s:'#00A3E0'},
+      NYK:{p:'#006BB6', s:'#F58426'},  OKC:{p:'#007AC1', s:'#EF3B24'},
+      ORL:{p:'#0077C0', s:'#C4CED4'},  PHI:{p:'#006BB6', s:'#ED174C'},
+      PHX:{p:'#1D1160', s:'#E56020'},  POR:{p:'#E03A3E', s:'#061922'},
+      SAC:{p:'#5A2D81', s:'#63727A'},  SAS:{p:'#C4CED4', s:'#000000'},
+      TOR:{p:'#CE1141', s:'#000000'},  UTA:{p:'#002B5C', s:'#00471B'},
+      WAS:{p:'#002B5C', s:'#E31837'},  WSB:{p:'#002B5C', s:'#E31837'},
+      SEA:{p:'#2D7134', s:'#F5A915'},  VAN:{p:'#00B2A9', s:'#E03A3E'}
+    };
+    const TEAM_LABEL = {
+      ATL:'Atlanta', BOS:'Boston', BKN:'Brooklyn', NJN:'New Jersey',
+      CHA:'Charlotte', CHH:'Charlotte', CHI:'Chicago', CLE:'Cleveland',
+      DAL:'Dallas', DEN:'Denver', DET:'Detroit', GSW:'Golden State',
+      HOU:'Houston', IND:'Indiana', LAC:'LA Clippers', LAL:'LA Lakers',
+      MEM:'Memphis', MIA:'Miami', MIL:'Milwaukee', MIN:'Minnesota',
+      NOP:'New Orleans', NOH:'New Orleans', NOK:'New Orleans',
+      NYK:'New York', OKC:'Oklahoma City', ORL:'Orlando', PHI:'Philadelphia',
+      PHX:'Phoenix', POR:'Portland', SAC:'Sacramento', SAS:'San Antonio',
+      TOR:'Toronto', UTA:'Utah', WAS:'Washington', WSB:'Washington',
+      SEA:'Seattle', VAN:'Vancouver'
+    };
+
+    function rgba(hex, a){
+      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if(!m) return `rgba(109,40,217,${a})`;
+      const r=parseInt(m[1],16), g=parseInt(m[2],16), b=parseInt(m[3],16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    function themePrimary(abbr){
+      const defP = '#6d28d9', defS = '#fbbf24';
+      const t = TEAM[abbr] || {p:defP, s:defS};
+      document.documentElement.style.setProperty('--accent', t.p);
+      document.documentElement.style.setProperty('--accent-strong', t.s);
+      document.documentElement.style.setProperty('--accent-weak', rgba(t.p, .18));
+      document.documentElement.style.setProperty('--accent-weak-2', rgba(t.p, .10));
+
+      teamChip.textContent = (abbr || '').slice(0,4);
+      teamChip.classList.toggle('mono', (abbr||'').length<=3);
+      teamChip.style.display = abbr ? 'inline-flex' : 'none';
+      teamChip.title = TEAM_LABEL[abbr] ? `${TEAM_LABEL[abbr]} (${abbr})` : abbr;
+    }
+    function themeOpponent(abbr){
+      const t = TEAM[abbr]; // optional
+      const p = t?.p || '#3b82f6';
+      document.documentElement.style.setProperty('--opp-accent', p);
+      document.documentElement.style.setProperty('--opp-weak', rgba(p, .14));
+      if(abbr){
+        oppChip.style.display = 'inline-flex';
+        oppChip.textContent = TEAM_LABEL[abbr] ? `${TEAM_LABEL[abbr]} (${abbr})` : abbr;
+      }else{
+        oppChip.style.display = 'none';
+        oppChip.textContent = '';
+      }
+    }
+
+    function chooseDominantTeam(rows){
+      if(!rows?.length) return null;
+      const teams = new Set(rows.map(r => r.team_abbr).filter(Boolean));
+      return teams.size === 1 ? [...teams][0] : rows[0].team_abbr || null;
+    }
+    function singleOpponent(rows){
+      if(!rows?.length) return null;
+      const opps = new Set(rows.map(r => r.opponent_abbr).filter(Boolean));
+      return opps.size === 1 ? [...opps][0] : null;
+    }
+
+    /* ------------- History + Suggestions ------------- */
+    const HISTORY_KEY = 'muse-history';
+    function pushHistory(text){
+      const arr = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      const next = [text, ...arr.filter(x => x !== text)].slice(0,8);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    }
+    function getHistory(){ return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+
+    async function showDropdown(){
+      const q = input.value.trim();
+      const hist = getHistory();
+      let html = '';
+
+      if(q.length===0 && hist.length){
+        html += `<div class="drop-sec">Recent</div>`;
+        hist.forEach(h => html += `<div class="item" data-v="${h}">${h}</div>`);
+      }else if(q.length){
+        try{
+          const r = await fetch(`/api/suggest?player=${encodeURIComponent(q)}`);
+          const j = await r.json();
+          if(j.players?.length){
+            html += `<div class="drop-sec">Players</div>`;
+            j.players.forEach(p => html += `<div class="item" data-v="${p}">${p}</div>`);
+          }
+          if(j.ideas?.length){
+            html += `<div class="drop-sec">Ideas</div>`;
+            j.ideas.forEach(s => html += `<div class="item" data-v="${s}">${s}</div>`);
+          }
+        }catch{}
+      }
+      drop.innerHTML = html || '<div class="item" style="opacity:.6;">No suggestions</div>';
+      drop.style.display = 'block';
+    }
+    input.addEventListener('focus', showDropdown);
+    input.addEventListener('input', showDropdown);
+    document.addEventListener('click', (e)=>{ if(!drop.contains(e.target) && e.target !== input) drop.style.display='none'; });
+    drop.addEventListener('click', (e)=>{
+      const el = e.target.closest('.item'); if(!el) return;
+      input.value = el.getAttribute('data-v') || '';
+      drop.style.display = 'none'; ask();
+    });
+
+    /* ------------- Interaction ------------- */
+    function setActivePill(n){
+      document.querySelectorAll('.pill[data-n]').forEach(p=>{
+        p.classList.toggle('active', Number(p.getAttribute('data-n'))===Number(n));
+      });
+    }
+
+    function fmt(x){ return x==null ? '-' : (typeof x==='number' ? x.toFixed(1) : x); }
+
+    function renderGames(rows){
+      gamesBody.innerHTML = rows.map(r=>`
+        <tr>
+          <td>${r.game_date}</td>
+          <td>${r.opponent_abbr}</td>
+          <td>${r.MIN ?? '-'}</td>
+          <td>${fmt(r.PTS)}</td>
+          <td>${fmt(r.REB)}</td>
+          <td>${fmt(r.AST)}</td>
+          <td>${fmt(r.STL)}</td>
+          <td>${fmt(r.BLK)}</td>
+          <td>${fmt(r.TOV)}</td>
+          <td>${fmt(r.FG_PCT)}</td>
+          <td>${fmt(r.FG3_PCT)}</td>
+          <td>${fmt(r.FT_PCT)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderMetricIfPresent(summaryText){
+      // summary line like: "LeBron ...: 3P% 38.4%" etc.
+      // Quick parse for "...: {LABEL} {VALUE}"
+      const cut = summaryText.split('\n')[0];
+      const m = cut.match(/:\s*(PPG|APG|RPG|SPG|BPG|TOV|FG%|3P%|FT%)\s+([0-9.]+%?)/i);
+      if(m){
+        metricValue.textContent = m[2];
+        metricLabel.textContent = m[1].toUpperCase();
+        metric.style.display = 'block';
+      }else{
+        metric.style.display = 'none';
+      }
+    }
+
+    async function ask(nOverride){
+      const text = input.value.trim(); if(!text) return;
+      btn.disabled = true; out.textContent = 'Loading…'; gamesBody.innerHTML = '';
+      try{
+        // summary text
+        const r = await fetch(`/api/query?text=${encodeURIComponent(text)}`);
+        const summary = await r.text();
+        out.textContent = summary;
+        renderMetricIfPresent(summary);
+        pushHistory(text);
+
+        // games
+        const n = nOverride || 10; setActivePill(n);
+        const rg = await fetch(`/api/games?text=${encodeURIComponent(text)}&limit=${n}`);
+        const gj = await rg.json();
+        renderGames(gj.rows || []);
+
+        // THEME: player's team dominant, optional opponent subtle
+        const dom = chooseDominantTeam(gj.rows || []);
+        themePrimary(dom || 'LAL');                      // default Lakers if unknown
+        const opp = singleOpponent(gj.rows || []);
+        themeOpponent(opp);
+      }catch(err){
+        out.textContent = 'Request failed: ' + (err && err.message || err);
+        themePrimary('LAL'); themeOpponent(null);
+      }finally{ btn.disabled = false; }
+    }
+
+    btn.addEventListener('click', ()=>ask());
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter') ask(); });
+    document.querySelectorAll('.pill[data-n]').forEach(p=>{
+      p.addEventListener('click', ()=> ask(Number(p.getAttribute('data-n'))));
+    });
+
+    // copy
+    copyBtn.addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(out.textContent || '');
+        copyBtn.classList.add('ok'); copyBtn.textContent = 'Copied!';
+        setTimeout(()=>{ copyBtn.classList.remove('ok'); copyBtn.textContent = 'Copy'; }, 900);
+      }catch{}
+    });
+
+    // run if q= in URL
+    const urlQ = new URLSearchParams(location.search).get('q');
+    if(urlQ){ input.value = urlQ; ask(); } else input.focus();
+
+    // initial theme
+    themePrimary('LAL'); themeOpponent(null);
+  </script>
+</body>
+</html>

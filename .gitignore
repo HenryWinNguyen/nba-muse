@@ -1,0 +1,19 @@
+# Next.js
+.next
+out
+node_modules
+
+# Env and local stuff
+.env*
+!.env.example
+
+# OS and logs
+.DS_Store
+*.log
+
+# Data you do not want in the repo
+data/raw/
+data/warehouse/
+data/serving/*.db
+*.duckdb
+*.sqlite
