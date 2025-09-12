@@ -17,3 +17,6 @@ data/warehouse/
 data/serving/*.db
 *.duckdb
 *.sqlite
+
+# Local DB dumps
+*.sql
